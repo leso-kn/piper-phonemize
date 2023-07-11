@@ -47,6 +47,7 @@ target_link_directories(
 target_link_libraries(
     piper_phonemize
     ${ESPEAK_NG_LIBRARIES}
+    libespeak-ng.a
     onnxruntime
 )
 

@@ -1,3 +1,4 @@
+#include <malloc.h>
 #include <map>
 #include <string>
 #include <vector>
@@ -7,6 +8,21 @@
 
 #include "phonemize.hpp"
 #include "uni_algo.h"
+
+#ifdef __GLIBC__
+#define OFFSET_CLAUSE_TERMINATOR (8 + sizeof(int))
+#else
+#define OFFSET_CLAUSE_TERMINATOR sizeof(int)
+#endif
+
+typedef struct {
+  int clause_terminator() {
+    // get memory address of espeak::Translator->clause_terminator field
+    return *(int*)((unsigned long)(this + malloc_usable_size(this) - OFFSET_CLAUSE_TERMINATOR) & -8);
+  }
+} Translator;
+
+extern Translator *translator;
 
 namespace piper {
 
@@ -39,10 +55,12 @@ void phonemize_eSpeak(std::string text, eSpeakPhonemeConfig &config,
 
   while (inputTextPointer != NULL) {
     // Modified espeak-ng API to get access to clause terminator
-    std::string clausePhonemes(espeak_TextToPhonemesWithTerminator(
+    std::string clausePhonemes(espeak_TextToPhonemes(
         (const void **)&inputTextPointer,
         /*textmode*/ espeakCHARS_AUTO,
-        /*phonememode = IPA*/ 0x02, &terminator));
+        /*phonememode = IPA*/ 0x02));
+
+    terminator = translator->clause_terminator();
 
     // Decompose, e.g. "ç" -> "c" + "̧"
     auto phonemesNorm = una::norm::to_nfd_utf8(clausePhonemes);
